@@ -8,5 +8,6 @@ DishVentory AI is an intelligent restaurant management tool that predicts which 
 <h4>NOTE</h4>
 <p>In this repo, one year sales of pizza restaurant are trained to the model and predicted</p>
 <p>The data set used in DishVentory as of now is the 1 year sales of a pizza restaurant <mark>test.csv</mark> is to test the model accuracy for developer refernence and the link to the excel sheet in front end app.py is the actual data set</p>
+<p>Still there please wait</p>
 
 
