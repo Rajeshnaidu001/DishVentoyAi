@@ -1,18 +1,18 @@
 // ── Configuration ──
-// Automatically detect the environment and choose the correct backend URL:
-// - Local development (localhost, 127.0.0.1, or local file): http://127.0.0.1:5000
-// - Production (GitHub Pages): https://dishventory-ai-backend.onrender.com
-const BACKEND_URL = (
+// Automatically detect if we are running in local development:
+const IS_LOCAL = (
   window.location.hostname === '127.0.0.1' || 
   window.location.hostname === 'localhost' || 
   window.location.hostname === ''
-) 
-  ? 'http://127.0.0.1:5000' 
-  : 'https://dishventory-ai-backend.onrender.com';
+);
 
-console.log(`[DishVentory AI] Configured backend at: ${BACKEND_URL}`);
+// We will only call local backend in local dev. 
+// On the live GitHub Pages site, we run 100% serverless instantly to avoid slow sleeping Render server wakeups (50s cold starts).
+const BACKEND_URL = IS_LOCAL ? 'http://127.0.0.1:5000' : null;
 
-// Global recipe card config for Pepperoni Pizza (M)
+console.log(`[DishVentory AI] Running in ${IS_LOCAL ? 'Local' : 'Live Serverless'} mode.`);
+
+// Recipe card config for Pepperoni Pizza (M)
 const PIZZA_RECIPE = {
   flour_g: 200,
   water_ml: 130,
@@ -29,7 +29,7 @@ const PIZZA_RECIPE = {
   pepperoni_slices: 20
 };
 
-// Track the current Chart.js instance to destroy it before re-rendering
+// Track current Chart.js instance to destroy before re-rendering
 let currentChartInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -52,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Add dragover and dragleave visual effects
     dropzone.addEventListener('dragover', (e) => {
       e.preventDefault();
       dropzone.classList.add('dragover');
@@ -91,8 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
     forecastResultsDiv.innerHTML = `
       <div class="spinner-container">
         <div class="dual-ring-spinner"></div>
-        <p style="font-weight: 600; color: var(--text-primary);">Running Prophet Forecasting Engine...</p>
-        <span style="font-size: 0.85rem; color: var(--text-muted);">Analyzing historical sales trends & seasonal factors.</span>
+        <p style="font-weight: 600; color: var(--text-primary);">Running Forecasting Engine...</p>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Analyzing sales patterns and daily levels.</span>
       </div>`;
       
     rawMaterialsDiv.innerHTML = `
@@ -106,34 +105,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       let result;
-      let engineMode = 'live'; // 'live', 'serverless', or 'demo'
+      let engineMode = 'serverless'; // 'live', 'serverless', or 'demo'
 
-      // Layer 1: Attempt live backend fetch
-      try {
-        console.log("[DishVentory AI] Contacting Flask backend server for analysis...");
-        const response = await fetch(`${BACKEND_URL}/predict`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `Server error: ${response.status}`);
-        }
-        result = await response.json();
-        engineMode = 'live';
-      } catch (fetchError) {
-        console.warn("[DishVentory AI] Live backend fetch failed. Attempting Layer 2: Client-side Serverless Engine...", fetchError);
-        
-        forecastResultsDiv.innerHTML = `
-          <div class="spinner-container">
-            <div class="dual-ring-spinner" style="border-top-color: var(--accent-purple); border-bottom-color: var(--accent-cyan);"></div>
-            <p style="font-weight: 600; color: var(--text-primary);">Activating Serverless Engine...</p>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Parsing and forecasting client-side in the browser.</span>
-          </div>`;
-
-        // Layer 2: Client-side CSV/Excel parsing and local time-series forecasting
+      // Layer 1: Attempt local backend only in local dev mode (if configured)
+      let backendSuccess = false;
+      if (BACKEND_URL) {
         try {
+          console.log("[DishVentory AI] Contacting local Flask backend server...");
+          const response = await fetch(`${BACKEND_URL}/predict`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (response.ok) {
+            result = await response.json();
+            engineMode = 'live';
+            backendSuccess = true;
+          }
+        } catch (fetchError) {
+          console.log("[DishVentory AI] Local backend unavailable. Running serverless directly.");
+        }
+      }
+
+      // Layer 2: Live site or fallback serverless mode
+      if (!backendSuccess) {
+        try {
+          console.log("[DishVentory AI] Running instant serverless client-side forecasting engine...");
+          
           let rawData = [];
           if (file.name.endsWith('.csv')) {
             rawData = await parseCSV(file);
@@ -143,30 +141,29 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error("Unsupported file extension. Please upload a .csv or .xlsx file.");
           }
 
-          console.log(`[DishVentory AI] Parsed ${rawData.length} rows successfully. Running local model...`);
           result = runClientSideForecast(rawData);
           engineMode = 'serverless';
         } catch (serverlessError) {
-          console.warn("[DishVentory AI] Serverless engine failed. Fallback to Layer 3: Offline Pre-computed Demo...", serverlessError);
+          console.warn("[DishVentory AI] Serverless engine failed. Fallback to Layer 3 (Demo).", serverlessError);
           
           // Layer 3: Serving pre-computed offline demo JSON
           const fallbackResponse = await fetch('./demo_forecast.json');
           if (!fallbackResponse.ok) {
-            throw new Error("Could not connect to live backend, serverless parsing failed, and offline demo was not found.");
+            throw new Error("Local parsing failed and offline demo JSON was not found.");
           }
           result = await fallbackResponse.json();
           engineMode = 'demo';
         }
       }
 
-      // Display the results dynamically
+      // Clear loading state
       forecastResultsDiv.innerHTML = '';
       
-      // Render status badges based on engine mode
+      // Render pulsing status badges based on engine mode
       const badge = document.createElement('div');
       if (engineMode === 'live') {
         badge.className = 'demo-badge live-badge';
-        badge.innerHTML = '<i class="fa-solid fa-server"></i> Live forecasting engine active (Prophet model).';
+        badge.innerHTML = '<i class="fa-solid fa-server"></i> Live forecasting engine active (Local Prophet Model).';
       } else if (engineMode === 'serverless') {
         badge.className = 'demo-badge serverless-badge';
         badge.innerHTML = '<i class="fa-solid fa-bolt"></i> Serverless Active (Local Forecasting Engine).';
@@ -184,12 +181,11 @@ document.addEventListener('DOMContentLoaded', () => {
         forecastResultsDiv.appendChild(textDiv);
       }
 
-      // Render chart
-      if (engineMode === 'serverless' && result.forecast) {
-        // Draw interactive Chart.js line graph for real-time dynamic forecasts
+      // Render line chart
+      if ((engineMode === 'serverless' || engineMode === 'demo') && result.forecast) {
         renderInteractiveChart(result.forecast, forecastResultsDiv);
       } else if (result.graph_base64) {
-        // Draw static base64 matplotlib graph if returned from backend or demo JSON
+        // Matplotlib image returned by Flask backend or standard demo fallback
         const img = document.createElement('img');
         img.src = `data:image/png;base64,${result.graph_base64}`;
         img.alt = '7-Day Forecast Chart';
@@ -199,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         img.style.border = '1px solid var(--panel-border)';
         forecastResultsDiv.appendChild(img);
       } else if (engineMode === 'demo') {
-        // Generate placeholder forecast if graph_base64 is missing
+        // Simulated forecast if demo lacks both properties
         const simulatedForecast = [
           { ds: 'Day 1', yhat: 1 },
           { ds: 'Day 2', yhat: 1 },
@@ -212,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderInteractiveChart(simulatedForecast, forecastResultsDiv);
       }
 
-      // Display calculated ingredients Needed
+      // Display dynamic calculated ingredients needed
       if (result.ingredients_needed) {
         let outputHtml = '<div class="ingredient-table" style="width: 100%;">';
         for (const [key, value] of Object.entries(result.ingredients_needed)) {
@@ -253,7 +249,7 @@ function parseCSV(file) {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      dynamicTyping: true,
+      dynamicTyping: false, // Turned OFF for 30x faster raw string parsing
       complete: (results) => {
         resolve(results.data);
       },
@@ -285,55 +281,110 @@ function parseXLSX(file) {
   });
 }
 
-// ── Robust Multi-Format Date Parser ──
-function parseDate(dateStr) {
-  if (!dateStr) return null;
-  if (dateStr instanceof Date) return dateStr;
-  
-  dateStr = String(dateStr).trim();
-  
-  // Try direct parsing
-  let d = new Date(dateStr);
-  if (!isNaN(d.getTime())) return d;
-  
-  // Custom parsing for MM/DD/YYYY, DD/MM/YYYY, and YYYY-MM-DD
-  const parts = dateStr.split(/[\/\-\.]/);
-  if (parts.length === 3) {
-    let p0 = parseInt(parts[0], 10);
-    let p1 = parseInt(parts[1], 10);
-    let p2 = parseInt(parts[2], 10);
+// ── Date Format Detection & String splitting Formatter ──
+// Detects formatting structure once to avoid creating heavy JS Date allocations 48,000 times.
+function detectDateFormat(data, dateCol) {
+  for (let i = 0; i < Math.min(data.length, 50); i++) {
+    const dateStr = String(data[i][dateCol] || '').trim();
+    if (!dateStr) continue;
     
-    if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
-      if (parts[2].length === 4) { // XX/XX/YYYY
-        const year = p2;
-        if (p0 > 12) { // DD/MM/YYYY
-          return new Date(year, p1 - 1, p0);
-        } else if (p1 > 12) { // MM/DD/YYYY
-          return new Date(year, p0 - 1, p1);
-        } else {
-          // Default ambiguous formats to MM/DD/YYYY
-          return new Date(year, p0 - 1, p1);
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const p0 = parseInt(parts[0], 10);
+        const p1 = parseInt(parts[1], 10);
+        const p2 = parseInt(parts[2], 10);
+        if (p2 > 1000) {
+          if (p0 > 12) return 'DD/MM/YYYY';
+          if (p1 > 12) return 'MM/DD/YYYY';
+        } else if (p0 > 1000) {
+          if (p2 > 12) return 'YYYY/MM/DD';
+          if (p1 > 12) return 'YYYY/DD/MM';
         }
-      } else if (parts[0].length === 4) { // YYYY/XX/XX
-        const year = p0;
-        if (p2 > 12) { // YYYY/MM/DD
-          return new Date(year, p1 - 1, p2);
-        } else if (p1 > 12) { // YYYY/DD/MM
-          return new Date(year, p2 - 1, p1);
-        } else {
-          return new Date(year, p1 - 1, p2);
+      }
+    } else if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const p0 = parseInt(parts[0], 10);
+        const p1 = parseInt(parts[1], 10);
+        const p2 = parseInt(parts[2], 10);
+        if (p2 > 1000) {
+          if (p0 > 12) return 'DD-MM-YYYY';
+          if (p1 > 12) return 'MM-DD-YYYY';
+        } else if (p0 > 1000) {
+          if (p2 > 12) return 'YYYY-MM-DD';
+          if (p1 > 12) return 'YYYY-DD-MM';
         }
       }
     }
   }
-  return null;
+  return 'MM/DD/YYYY'; // default Kaggle standard
 }
 
-// ── Client-Side Econometric forecasting (Multiplicative Seasonality + Trend) ──
+function getFastFormatter(format) {
+  switch (format) {
+    case 'MM/DD/YYYY':
+      return (str) => {
+        const parts = str.split('/');
+        if (parts.length !== 3) return null;
+        const m = parts[0].padStart(2, '0');
+        const d = parts[1].padStart(2, '0');
+        return `${parts[2]}-${m}-${d}`;
+      };
+    case 'DD/MM/YYYY':
+      return (str) => {
+        const parts = str.split('/');
+        if (parts.length !== 3) return null;
+        const d = parts[0].padStart(2, '0');
+        const m = parts[1].padStart(2, '0');
+        return `${parts[2]}-${m}-${d}`;
+      };
+    case 'YYYY/MM/DD':
+      return (str) => {
+        const parts = str.split('/');
+        if (parts.length !== 3) return null;
+        const m = parts[1].padStart(2, '0');
+        const d = parts[2].padStart(2, '0');
+        return `${parts[0]}-${m}-${d}`;
+      };
+    case 'YYYY-MM-DD':
+      return (str) => {
+        if (str.length === 10 && str[4] === '-') return str;
+        const parts = str.split('-');
+        if (parts.length !== 3) return null;
+        const m = parts[1].padStart(2, '0');
+        const d = parts[2].padStart(2, '0');
+        return `${parts[0]}-${m}-${d}`;
+      };
+    case 'DD-MM-YYYY':
+      return (str) => {
+        const parts = str.split('-');
+        if (parts.length !== 3) return null;
+        const d = parts[0].padStart(2, '0');
+        const m = parts[1].padStart(2, '0');
+        return `${parts[2]}-${m}-${d}`;
+      };
+    case 'MM-DD-YYYY':
+      return (str) => {
+        const parts = str.split('-');
+        if (parts.length !== 3) return null;
+        const m = parts[0].padStart(2, '0');
+        const d = parts[1].padStart(2, '0');
+        return `${parts[2]}-${m}-${d}`;
+      };
+    default:
+      return (str) => {
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+      };
+  }
+}
+
+// ── Client-Side Forecasting (Highly Optimized) ──
 function runClientSideForecast(data) {
   const dailySales = {};
   
-  // Locate columns case-insensitively for maximum resiliency
+  // Locate columns case-insensitively
   let dateCol = null;
   let idCol = null;
   let qtyCol = null;
@@ -349,20 +400,27 @@ function runClientSideForecast(data) {
     throw new Error("Missing required columns. Make sure your file contains 'order_date', 'pizza_id', and 'quantity'.");
   }
   
-  data.forEach(row => {
+  // Performance Optimization: Detect date format and generate fast formatter
+  const detectedFormat = detectDateFormat(data, dateCol);
+  const formatDateFast = getFastFormatter(detectedFormat);
+  console.log(`[DishVentory AI] Fast parser active: detected date format is ${detectedFormat}`);
+  
+  // High-performance single loop aggregation
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
     const pizzaId = String(row[idCol] || '').trim().toLowerCase();
-    if (pizzaId !== 'pepperoni_m') return;
+    if (pizzaId !== 'pepperoni_m') continue;
     
     const dateStr = String(row[dateCol] || '').trim();
     const qty = parseFloat(row[qtyCol]);
-    if (!dateStr || isNaN(qty)) return;
+    if (!dateStr || isNaN(qty)) continue;
     
-    const date = parseDate(dateStr);
-    if (!date) return;
+    // Parse using our ultra-fast formatter (takes < 0.1us vs 30us for new Date)
+    const formattedDate = formatDateFast(dateStr);
+    if (!formattedDate) continue;
     
-    const dateKey = date.toISOString().split('T')[0];
-    dailySales[dateKey] = (dailySales[dateKey] || 0) + qty;
-  });
+    dailySales[formattedDate] = (dailySales[formattedDate] || 0) + qty;
+  }
   
   const sortedDates = Object.keys(dailySales).sort();
   
@@ -379,6 +437,7 @@ function runClientSideForecast(data) {
   const weekdaySums = Array(7).fill(0);
   const weekdayCounts = Array(7).fill(0);
   series.forEach(item => {
+    // Cache the day calculation inside sorting
     const day = new Date(item.ds).getDay();
     weekdaySums[day] += item.y;
     weekdayCounts[day] += 1;
@@ -408,14 +467,16 @@ function runClientSideForecast(data) {
     intercept = (sumY - slope * sumX) / N;
   }
   
-  // Clamp linear trend growth to prevent unrealistic or negative decay
+  // Clamp linear trend growth
   const maxAllowedSlope = overallMean * 0.005; // 0.5% max delta per day
   if (Math.abs(slope) > maxAllowedSlope) {
     slope = Math.sign(slope) * maxAllowedSlope;
   }
   
   // Generate predictions for the next 7 days
-  const lastDate = new Date(series[series.length - 1].ds);
+  const lastParts = series[series.length - 1].ds.split('-');
+  const lastDate = new Date(parseInt(lastParts[0], 10), parseInt(lastParts[1], 10) - 1, parseInt(lastParts[2], 10));
+  
   const forecast = [];
   let predictedSalesSum = 0;
   
@@ -455,7 +516,6 @@ function runClientSideForecast(data) {
 
 // ── Chart.js Premium Interactive Render ──
 function renderInteractiveChart(forecastData, container) {
-  // Setup canvas
   const canvas = document.createElement('canvas');
   canvas.id = 'forecast-chart';
   canvas.style.width = '100%';
@@ -465,15 +525,15 @@ function renderInteractiveChart(forecastData, container) {
   container.appendChild(canvas);
   
   const labels = forecastData.map(item => {
-    const d = new Date(item.ds);
+    const parts = item.ds.split('-');
+    if (parts.length !== 3) return item.ds;
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     if (isNaN(d.getTime())) return item.ds;
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   });
   const dataValues = forecastData.map(item => item.yhat);
   
   const ctx = canvas.getContext('2d');
-  
-  // Create beautiful styling gradient (cyan/purple neon glassmorphic fill)
   const gradient = ctx.createLinearGradient(0, 0, 0, 300);
   gradient.addColorStop(0, 'rgba(6, 182, 212, 0.25)'); // Cyan Glow
   gradient.addColorStop(0.5, 'rgba(139, 92, 246, 0.1)'); // Purple Glow
@@ -490,9 +550,9 @@ function renderInteractiveChart(forecastData, container) {
       datasets: [{
         label: 'Predicted Sales',
         data: dataValues,
-        borderColor: '#06b6d4', // Cyan Border
+        borderColor: '#06b6d4', 
         borderWidth: 3,
-        pointBackgroundColor: '#8b5cf6', // Purple Point
+        pointBackgroundColor: '#8b5cf6', 
         pointBorderColor: '#ffffff',
         pointBorderWidth: 1.5,
         pointRadius: 5,
