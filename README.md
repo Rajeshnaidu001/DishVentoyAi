@@ -1,14 +1,69 @@
-# DishVentoyAi
-DishVentory AI is an intelligent restaurant management tool that predicts which dishes will sell faster using past orders and trending food insights. It maps predicted dishes to ingredients to calculate the exact inventory needed, helping restaurants reduce food waste, avoid stockouts, and optimize kitchen operations by preparing the right dishes.
+# 🍕 DishVentory AI
 
+> Intelligent restaurant management tool that predicts dish sales and calculates inventory needs using **Prophet** time-series forecasting.
 
-<h2>Prophet</h2>
-<p>This amazing time series forecasting model has been used to predict the dishes that are gonna sell faster in next 7 days period.</p>
-<p>Mapped the ingredient quantities of the dishes that are going to get sold in next 7 days, so there will be not overstocking and understocking inventory</p>
-<h4>NOTE</h4>
-<p>In this repo, one year sales of pizza restaurant are trained to the model and predicted</p>
-<p>The data set used in DishVentory as of now is the 1 year sales of a pizza restaurant <mark>test.csv</mark> is to test the model accuracy for developer refernence and the link to the excel sheet in front end app.py is the actual data set</p>
+[![GitHub Pages](https://img.shields.io/badge/Frontend-Live-brightgreen)](https://rajeshnaidu001.github.io/DishVentoyAi/)
 
-<p>Still there please wait</p>
+## What it does
 
+DishVentory AI helps restaurants:
+- **Predict** which dishes will sell faster in the next 7 days using past order data
+- **Map** predicted dishes to ingredients to calculate exact inventory needed
+- **Reduce** food waste, avoid stockouts, and optimize kitchen operations
 
+## Architecture
+
+```
+DishVentoyAi/
+├── backend/          # Flask API + Prophet ML model
+│   ├── app.py        # Main API server
+│   ├── Procfile      # Render deployment config
+│   └── requirements.txt
+├── frontend/         # Static HTML/CSS/JS dashboard
+│   ├── index.html
+│   ├── script.js
+│   └── styles.css
+└── scripts/          # Offline analysis scripts
+    └── forecast.py   # Full multi-pizza forecasting pipeline
+```
+
+## Quick Start
+
+### Backend (Flask API)
+
+```bash
+cd backend
+pip install -r requirements.txt
+python app.py
+# Server runs on http://127.0.0.1:5000
+```
+
+### Frontend
+
+Open `frontend/index.html` in your browser, or use a local server:
+```bash
+cd frontend
+python -m http.server 5500
+# Open http://127.0.0.1:5500
+```
+
+> **Note:** For local development, update `BACKEND_URL` in `script.js` to `http://127.0.0.1:5000`
+
+## Dataset
+
+The model is trained on 1 year of pizza restaurant sales data. The dataset must include columns:
+- `order_date` — date of order
+- `pizza_id` — pizza identifier (e.g., `pepperoni_m`)
+- `quantity` — number of units sold
+
+## Tech Stack
+
+- **ML Model:** Facebook Prophet (time-series forecasting)
+- **Backend:** Python, Flask, Pandas, Matplotlib
+- **Frontend:** HTML, CSS, JavaScript
+- **Deployment:** Render (backend), GitHub Pages (frontend)
+
+## Deployment
+
+- **Frontend:** Auto-deploys to GitHub Pages via GitHub Actions on push to `main`
+- **Backend:** Deploy to [Render](https://render.com) — connect this repo, set root directory to `backend/`, and it will use the Procfile automatically

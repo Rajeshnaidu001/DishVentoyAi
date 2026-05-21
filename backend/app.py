@@ -1,16 +1,24 @@
 from io import BytesIO
 import base64
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from prophet import Prophet
-import matplotlib
-matplotlib.use('Agg')
+import os
 
 app = Flask(__name__)
 
-CORS(app)
+# Allow requests from GitHub Pages and localhost for development
+CORS(app, origins=[
+    "https://rajeshnaidu001.github.io",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+])
 
 # Ingredient mapping for one pepperoni pizza
 pizza_recipe = {
@@ -102,6 +110,11 @@ def forecast_pepperoni(df):
     }
 
 
+@app.route('/', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok', 'message': 'DishVentory AI backend is running'})
+
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'data-file' not in request.files:
@@ -129,15 +142,7 @@ def predict():
         print(f"Error: {e}")
         return jsonify({'error': 'Failed to process file. Make sure it has order_date, pizza_id, quantity columns.'}), 500
 
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "https://dishventory-ai.vercel.app"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    return response
 
 if __name__ == '__main__':
-    # Ensure debug and the interactive debugger are explicitly disabled when running directly.
-    # Also disable the auto-reloader here to avoid Werkzeug restarting the process when files change.
-    app.debug = False
-    app.run(host='0.0.0.0', port=5000, debug=False, use_debugger=False, use_reloader=False)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
