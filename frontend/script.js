@@ -655,7 +655,10 @@ function renderInteractiveChart(forecastData, container) {
           },
           ticks: {
             color: '#9ca3af',
-            stepSize: 1,
+            // Dynamically scale stepSize: only force 1 if values are small (<= 10)
+            // to prevent hundreds of cluttered ticks on larger forecasts.
+            stepSize: Math.max(...dataValues) <= 10 ? 1 : undefined,
+            precision: 0,
             font: {
               family: "'Plus Jakarta Sans', sans-serif",
               size: 11,
