@@ -3,35 +3,128 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DishVentory AI — Sales Forecast Dashboard</title>
-    <meta name="description" content="DishVentory AI - Intelligent restaurant management tool that predicts dish sales and calculates inventory needs using Prophet forecasting." />
+    <title>DishVentory AI — Intelligent Restaurant Forecast Dashboard</title>
+    <meta name="description" content="DishVentory AI - Premium, intelligent restaurant management tool that predicts dish sales and calculates inventory needs using Prophet forecasting." />
     <link rel="icon" type="image/x-icon" href="./favicon-16x16.png">
+    
+    <!-- Google Fonts: Plus Jakarta Sans for premium modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for modern dashboard icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <link rel="stylesheet" href="styles.css" />
     <script src="script.js" defer></script>
   </head>
   <body>
-    <h1>🍕 Sales Forecast Dashboard</h1>
-    <form id="upload-form" enctype="multipart/form-data">
-      <label for="data-file">Upload sales data (CSV / Excel):</label>
-      <input
-        type="file"
-        id="data-file"
-        name="data-file"
-        accept=".xlsx,.csv"
-      /><br /><br />
-      <button type="submit" id="submit-btn">Upload and Predict</button>
-    </form>
-    <div id="result-section">
-      <div id="forecast-section">
-        <h2>Forecast Results</h2>
-        <div id="forecast-results"></div>
-      </div>
-      <div id="raw-materials-section">
-        <h2>Raw Materials Suggested</h2>
-        <div id="raw-materials-suggested">
-          <!-- Raw materials suggestions will be displayed here -->
+    <!-- Subtle premium background glow spots -->
+    <div class="glow-bg-spot-1"></div>
+    <div class="glow-bg-spot-2"></div>
+
+    <div class="app-container">
+      <!-- Premium Top Header -->
+      <header class="app-header">
+        <div class="brand">
+          <div class="brand-logo">
+            <i class="fa-solid fa-pizza-slice logo-icon"></i>
+          </div>
+          <div class="brand-text">
+            <h1>DishVentory <span class="accent-text">AI</span></h1>
+            <p class="tagline">Next-Gen Predictive Restaurant Operations</p>
+          </div>
         </div>
-      </div>
+        <div class="system-status">
+          <span class="status-indicator-dot"></span>
+          <span class="status-text">Active Forecast Engine</span>
+        </div>
+      </header>
+
+      <!-- Main Dashboard Grid -->
+      <main class="dashboard-grid">
+        <!-- Sidebar - Upload Zone -->
+        <aside class="sidebar-panel">
+          <div class="panel-card glass-panel">
+            <div class="panel-header">
+              <i class="fa-solid fa-cloud-arrow-up panel-icon"></i>
+              <h2>Upload Sales Data</h2>
+            </div>
+            <p class="panel-desc">Provide historical sales records to generate a 7-day demand forecast and raw material list.</p>
+            
+            <form id="upload-form" enctype="multipart/form-data">
+              <div class="upload-dropzone" id="dropzone">
+                <i class="fa-solid fa-file-excel dropzone-icon"></i>
+                <label for="data-file" class="dropzone-label">
+                  <span class="browse-btn">Choose File</span>
+                  <span class="dropzone-text">or drag & drop here</span>
+                </label>
+                <input
+                  type="file"
+                  id="data-file"
+                  name="data-file"
+                  accept=".xlsx,.csv"
+                  required
+                />
+                <span class="file-name-display" id="file-name">No file selected</span>
+              </div>
+              <button type="submit" id="submit-btn" class="action-btn">
+                <span>Upload and Predict</span>
+                <i class="fa-solid fa-bolt btn-icon"></i>
+              </button>
+            </form>
+          </div>
+          
+          <div class="panel-card glass-panel info-card">
+            <h3><i class="fa-solid fa-circle-info"></i> Recipe Details</h3>
+            <p>Predictive model is calibrated for <strong>Pepperoni Pizza (M)</strong>. The forecast automatically propagates to ingredient list based on restaurant-grade baking ratios.</p>
+          </div>
+        </aside>
+
+        <!-- Main Display - Forecast Results -->
+        <section class="display-panel">
+          <div id="result-section" class="results-container">
+            <!-- Forecast Result Card -->
+            <div id="forecast-section" class="panel-card glass-panel results-card">
+              <div class="panel-header">
+                <i class="fa-solid fa-chart-line panel-icon accent-icon"></i>
+                <h2>Forecast Results</h2>
+              </div>
+              <div class="result-box-wrapper">
+                <div id="forecast-results" class="results-box">
+                  <div class="empty-state">
+                    <i class="fa-solid fa-chart-area empty-icon"></i>
+                    <p>Awaiting Sales Data Upload</p>
+                    <span>Upload a CSV or XLSX file to visualize sales forecasts.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Raw Materials Card -->
+            <div id="raw-materials-section" class="panel-card glass-panel materials-card">
+              <div class="panel-header">
+                <i class="fa-solid fa-dolly panel-icon accent-icon"></i>
+                <h2>Raw Materials Suggested</h2>
+              </div>
+              <div class="result-box-wrapper">
+                <div id="raw-materials-suggested" class="results-box mono-text">
+                  <div class="empty-state">
+                    <i class="fa-solid fa-boxes-stacked empty-icon"></i>
+                    <p>No Data Computed</p>
+                    <span>Ingredients calculations will automatically show up here.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Premium Footer -->
+      <footer class="app-footer">
+        <p>&copy; 2026 DishVentory AI. Designed for elite kitchen optimization. Enterprise Powered.</p>
+      </footer>
     </div>
   </body>
 </html>

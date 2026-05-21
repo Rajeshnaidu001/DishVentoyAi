@@ -11,14 +11,8 @@ import os
 
 app = Flask(__name__)
 
-# Allow requests from GitHub Pages and localhost for development
-CORS(app, origins=[
-    "https://rajeshnaidu001.github.io",
-    "http://127.0.0.1:5500",
-    "http://localhost:5500",
-    "http://127.0.0.1:3000",
-    "http://localhost:3000",
-])
+# Allow requests from all origins (CORS) to make deployment and testing extremely robust
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Ingredient mapping for one pepperoni pizza
 pizza_recipe = {
