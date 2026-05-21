@@ -7,8 +7,8 @@ venv/
 .env
 
 # Data files
-test.csv
 *.csv
+!test.csv
 !scripts/*.csv
 
 # Temp files
