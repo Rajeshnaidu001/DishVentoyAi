@@ -1,7 +1,7 @@
 // ── Configuration ──
 // For local development, change this to 'http://127.0.0.1:5000'
 // For production (Render), set to your deployed backend URL
-const BACKEND_URL = 'https://dishventoryai.onrender.com';
+const BACKEND_URL = 'https://dishventory-ai-backend.onrender.com';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('upload-form');
