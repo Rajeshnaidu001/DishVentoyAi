@@ -572,6 +572,38 @@ input[type="file"] {
 }
 
 /* ── RESPONSIVE DESIGN ── */
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    height: calc(100vh - 180px);
+    overflow: hidden;
+  }
+  
+  .sidebar-panel {
+    height: 100%;
+    overflow-y: auto;
+  }
+  
+  .display-panel {
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .results-container {
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .results-card, .materials-card {
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .results-box {
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
 @media (max-width: 1024px) {
   .dashboard-grid {
     grid-template-columns: 1fr;

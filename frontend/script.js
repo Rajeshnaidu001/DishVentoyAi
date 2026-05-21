@@ -565,6 +565,11 @@ function runClientSideForecast(data) {
 function renderInteractiveChart(forecastData, container) {
   const chartDiv = document.createElement('div');
   chartDiv.className = 'chart-container';
+  chartDiv.style.position = 'relative';
+  chartDiv.style.width = '100%';
+  chartDiv.style.height = '280px';
+  chartDiv.style.maxHeight = '280px';
+  chartDiv.style.marginTop = '12px';
   
   const canvas = document.createElement('canvas');
   canvas.id = 'forecast-chart';
