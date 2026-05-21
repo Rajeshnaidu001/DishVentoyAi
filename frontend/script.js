@@ -6,11 +6,11 @@ const IS_LOCAL = (
   window.location.hostname === ''
 );
 
-// We will only call local backend in local dev. 
-// On the live GitHub Pages site, we run 100% serverless instantly to avoid slow sleeping Render server wakeups (50s cold starts).
-const BACKEND_URL = IS_LOCAL ? 'http://127.0.0.1:5000' : null;
+// Deployed backend URL on Render
+const LIVE_BACKEND_URL = 'https://dishventory-ai-backend.onrender.com';
+const BACKEND_URL = IS_LOCAL ? 'http://127.0.0.1:5000' : LIVE_BACKEND_URL;
 
-console.log(`[DishVentory AI] Running in ${IS_LOCAL ? 'Local' : 'Live Serverless'} mode.`);
+console.log(`[DishVentory AI] Running in ${IS_LOCAL ? 'Local' : 'Live'} mode. Target backend: ${BACKEND_URL}`);
 
 // Recipe card config for Pepperoni Pizza (M)
 const PIZZA_RECIPE = {
@@ -87,11 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>Processing...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
     
+    // Progressive Loading Indicator
     forecastResultsDiv.innerHTML = `
       <div class="spinner-container">
         <div class="dual-ring-spinner"></div>
-        <p style="font-weight: 600; color: var(--text-primary);">Running Forecasting Engine...</p>
-        <span style="font-size: 0.85rem; color: var(--text-muted);">Analyzing sales patterns and daily levels.</span>
+        <p id="loading-main-text" style="font-weight: 600; color: var(--text-primary);">Connecting to forecasting server...</p>
+        <span id="loading-sub-text" style="font-size: 0.85rem; color: var(--text-muted);">Initiating prediction request...</span>
       </div>`;
       
     rawMaterialsDiv.innerHTML = `
@@ -100,35 +101,74 @@ document.addEventListener('DOMContentLoaded', () => {
         <p style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">Computing Ingredients...</p>
       </div>`;
 
+    const loadingMain = document.getElementById('loading-main-text');
+    const loadingSub = document.getElementById('loading-sub-text');
+    let timeElapsed = 0;
+    const loadingTimer = setInterval(() => {
+      timeElapsed += 1;
+      if (timeElapsed >= 2.5 && timeElapsed < 8) {
+        if (loadingMain) loadingMain.textContent = 'Waking up forecasting server...';
+        if (loadingSub) loadingSub.textContent = "Render free tier takes 50s to boot. Standing by...";
+      } else if (timeElapsed >= 8) {
+        if (loadingMain) loadingMain.textContent = 'Activating fallback model...';
+        if (loadingSub) loadingSub.textContent = "Backend took too long to respond. Running instant client-side forecast...";
+      }
+    }, 1000);
+
     const formData = new FormData();
     formData.append('data-file', file);
 
     try {
       let result;
-      let engineMode = 'serverless'; // 'live', 'serverless', or 'demo'
-
-      // Layer 1: Attempt local backend only in local dev mode (if configured)
+      let engineMode = 'live'; // 'live', 'serverless', or 'demo'
       let backendSuccess = false;
+      let fallbackReason = '';
+
+      // Layer 1: Attempt live/local backend with a strict 8-second timeout
       if (BACKEND_URL) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
         try {
-          console.log("[DishVentory AI] Contacting local Flask backend server...");
+          console.log(`[DishVentory AI] Contacting backend server at ${BACKEND_URL}...`);
           const response = await fetch(`${BACKEND_URL}/predict`, {
             method: 'POST',
             body: formData,
+            signal: controller.signal
           });
+          
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             result = await response.json();
             engineMode = 'live';
             backendSuccess = true;
+            console.log("[DishVentory AI] Prediction received successfully from live backend.");
+          } else {
+            console.warn(`[DishVentory AI] Backend error response status: ${response.status}`);
+            fallbackReason = `Server error (${response.status})`;
           }
         } catch (fetchError) {
-          console.log("[DishVentory AI] Local backend unavailable. Running serverless directly.");
+          clearTimeout(timeoutId);
+          if (fetchError.name === 'AbortError') {
+            console.warn("[DishVentory AI] Connection timed out after 8s. Falling back to local forecasting.");
+            fallbackReason = "Server took too long to wake up (Render cold-start)";
+          } else {
+            console.warn("[DishVentory AI] Network or CORS error connecting to backend.", fetchError);
+            fallbackReason = "Server offline or CORS blockage";
+          }
         }
+      } else {
+        fallbackReason = "Backend URL not configured";
       }
 
-      // Layer 2: Live site or fallback serverless mode
+      // Layer 2: Fallback to high-performance serverless mode
       if (!backendSuccess) {
+        // Update loading state text to transition smoothly to local parsing
+        clearInterval(loadingTimer);
+        if (loadingMain) loadingMain.textContent = 'Running local engine...';
+        if (loadingSub) loadingSub.textContent = 'Processing sales records in-browser...';
+
         try {
           console.log("[DishVentory AI] Running instant serverless client-side forecasting engine...");
           
@@ -157,19 +197,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Clear loading state
+      clearInterval(loadingTimer);
       forecastResultsDiv.innerHTML = '';
       
       // Render pulsing status badges based on engine mode
       const badge = document.createElement('div');
       if (engineMode === 'live') {
         badge.className = 'demo-badge live-badge';
-        badge.innerHTML = '<i class="fa-solid fa-server"></i> Live forecasting engine active (Local Prophet Model).';
+        badge.innerHTML = `<i class="fa-solid fa-server"></i> Live forecasting engine active (Prophet Model).`;
       } else if (engineMode === 'serverless') {
         badge.className = 'demo-badge serverless-badge';
-        badge.innerHTML = '<i class="fa-solid fa-bolt"></i> Serverless Active (Local Forecasting Engine).';
+        if (fallbackReason) {
+          badge.innerHTML = `<i class="fa-solid fa-bolt"></i> Serverless Active (Local Engine) — Bypassed: ${fallbackReason}.`;
+        } else {
+          badge.innerHTML = `<i class="fa-solid fa-bolt"></i> Serverless Active (Local Forecasting Engine).`;
+        }
       } else {
         badge.className = 'demo-badge';
-        badge.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Live backend offline. Serving pre-computed offline demo.';
+        badge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Live backend offline. Serving pre-computed offline demo.`;
       }
       forecastResultsDiv.appendChild(badge);
 
@@ -236,6 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <p style="font-size: 0.95rem; color: var(--error);">Calculation Aborted</p>
         </div>`;
     } finally {
+      // Clear loading state timer if not already cleared
+      clearInterval(loadingTimer);
       // Reset button
       submitBtn.disabled = false;
       submitBtn.innerHTML = '<span>Upload and Predict</span> <i class="fa-solid fa-bolt btn-icon"></i>';
