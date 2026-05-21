@@ -563,13 +563,14 @@ function runClientSideForecast(data) {
 
 // ── Chart.js Premium Interactive Render ──
 function renderInteractiveChart(forecastData, container) {
+  const chartDiv = document.createElement('div');
+  chartDiv.className = 'chart-container';
+  
   const canvas = document.createElement('canvas');
   canvas.id = 'forecast-chart';
-  canvas.style.width = '100%';
-  canvas.style.height = '100%';
-  canvas.style.minHeight = '300px';
-  canvas.style.marginTop = '12px';
-  container.appendChild(canvas);
+  
+  chartDiv.appendChild(canvas);
+  container.appendChild(chartDiv);
   
   const labels = forecastData.map(item => {
     const parts = item.ds.split('-');
