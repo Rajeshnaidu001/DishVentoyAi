@@ -231,14 +231,25 @@ document.addEventListener('DOMContentLoaded', () => {
         renderInteractiveChart(result.forecast, forecastResultsDiv);
       } else if (result.graph_base64) {
         // Matplotlib image returned by Flask backend or standard demo fallback
+        const chartDiv = document.createElement('div');
+        chartDiv.className = 'chart-container';
+        chartDiv.style.position = 'relative';
+        chartDiv.style.width = '100%';
+        chartDiv.style.height = '280px';
+        chartDiv.style.maxHeight = '280px';
+        chartDiv.style.marginTop = '12px';
+
         const img = document.createElement('img');
         img.src = `data:image/png;base64,${result.graph_base64}`;
         img.alt = '7-Day Forecast Chart';
         img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
         img.style.borderRadius = 'var(--border-radius-md)';
-        img.style.marginTop = '12px';
         img.style.border = '1px solid var(--panel-border)';
-        forecastResultsDiv.appendChild(img);
+        
+        chartDiv.appendChild(img);
+        forecastResultsDiv.appendChild(chartDiv);
       } else if (engineMode === 'demo') {
         // Simulated forecast if demo lacks both properties
         const simulatedForecast = [
